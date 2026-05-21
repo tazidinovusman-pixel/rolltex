@@ -3,11 +3,26 @@ import { supabase } from '../supabase/supabaseClient';
 import { ShoppingBag, Heart } from 'lucide-react';
 import bannerImage from '../assets/bannerImg.png';
 
+// Импорт файлов категорий
+import Shelk from './Shelk';
+import Hlopok from './Hlopok';
+import Len from './Len';
+import Sherst from './Sherst';
+import Barhat from './Barhat';
+import Atlas from './Atlas';
+import Trikotaj from './Trikotaj';
+import Viskoza from './Viskoza';
+import CategoryPage from '../pages/CategoryPage'; 
+
 export default function Home({ user }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [likedProducts, setLikedProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Все');
+  
+  // Состояния для переключения экранов и просмотра деталей
+  const [currentScreen, setCurrentScreen] = useState('MAIN'); 
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const categories = ['Все', 'Шелк', 'Хлопок', 'Лен', 'Шерсть', 'Бархат', 'Атлас', 'Трикотаж', 'Вискоза'];
 
@@ -34,7 +49,8 @@ export default function Home({ user }) {
     if (!error && data) setLikedProducts(data.map(f => f.product_id));
   };
 
-  const handleToggleFavorite = async (productId) => {
+  const handleToggleFavorite = async (productId, e) => {
+    e.stopPropagation(); 
     if (!user) {
       alert('Пожалуйста, войдите в аккаунт, чтобы добавлять ткани в избранное!');
       return;
@@ -49,7 +65,8 @@ export default function Home({ user }) {
     }
   };
 
-  const handleAddToCart = async (productId) => {
+  const handleAddToCart = async (productId, e) => {
+    e.stopPropagation(); 
     if (!user) {
       alert('Пожалуйста, войдите в аккаунт, чтобы совершать покупки!');
       return;
@@ -64,13 +81,41 @@ export default function Home({ user }) {
     }
   };
 
-  const finalProducts = selectedCategory === 'Все' 
-    ? products 
-    : products.filter(p => p.category === selectedCategory);
+  const handleCategoryClick = (cat) => {
+    setSelectedCategory(cat);
+    if (cat !== 'Все') {
+      setCurrentScreen(cat.toUpperCase()); 
+    } else {
+      setCurrentScreen('MAIN');
+    }
+  };
+
+  // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ МЕЖДУ СТРАНИЦАМИ ---
+  // Если выбран просмотр одной конкретной карточки из режима "Все"
+  if (selectedProduct) {
+    return (
+      <CategoryPage 
+        categoryName={selectedProduct.category} 
+        onBack={() => setSelectedProduct(null)} 
+        singleProduct={selectedProduct} // Передаем ткань для мгновенного большого показа
+        user={user}
+      />
+    );
+  }
+
+  // Переключение на списки категорий
+  if (currentScreen === 'ШЕЛК') return <Shelk user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'ХЛОПОК') return <Hlopok user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'ЛЕН') return <Len user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'ШЕРСТЬ') return <Sherst user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'БАРХАТ') return <Barhat user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'АТЛАС') return <Atlas user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'ТРИКОТАЖ') return <Trikotaj user={user} onBack={() => setCurrentScreen('MAIN')} />;
+  if (currentScreen === 'ВИСКОЗА') return <Viskoza user={user} onBack={() => setCurrentScreen('MAIN')} />;
 
   return (
     <div className="bg-white min-h-screen">
-      {/* Баннер (адаптивный: на мобильных текст сверху, картинка снизу) */}
+      {/* Баннер */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
         <div className="bg-gray-50 rounded-2xl p-6 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="max-w-md space-y-3 text-center md:text-left">
@@ -90,9 +135,9 @@ export default function Home({ user }) {
           {categories.map((cat) => (
             <button
               key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => handleCategoryClick(cat)}
               className={`text-[11px] md:text-xs uppercase tracking-wider font-medium px-3.5 py-2 rounded-full transition-all ${
-                selectedCategory === cat ? 'bg-gray-950 text-white shadow-sm' : 'bg-gray-50 text-gray-600'
+                selectedCategory === cat && currentScreen === 'MAIN' ? 'bg-gray-950 text-white shadow-sm' : 'bg-gray-50 text-gray-600'
               }`}
             >
               {cat}
@@ -101,24 +146,27 @@ export default function Home({ user }) {
         </div>
       </div>
 
-      {/* СЕТКА ТОВАРОВ: строго grid-cols-2 на телефонах и grid-cols-4 на компьютерах */}
+      {/* СЕТКА ТОВАРОВ "ВСЕ" */}
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 md:py-12">
         {loading ? (
           <div className="text-center py-20 text-xs text-gray-400">Загрузка каталога...</div>
-        ) : finalProducts.length === 0 ? (
+        ) : products.length === 0 ? (
           <div className="text-center py-20 text-xs text-gray-400">Нет доступных рулонов.</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 md:gap-x-6 gap-y-6 md:gap-y-10">
-            {finalProducts.map((product) => {
+            {products.map((product) => {
               const isFavorite = likedProducts.includes(product.id);
               return (
-                <div key={product.id} className="group relative flex flex-col bg-white border border-gray-100 rounded-xl p-1.5 md:p-2 hover:shadow-sm transition-shadow">
-                  
+                <div 
+                  key={product.id} 
+                  onClick={() => setSelectedProduct(product)} // Клик открывает большую страницу!
+                  className="group relative flex flex-col bg-white border border-gray-100 rounded-xl p-1.5 md:p-2 hover:shadow-sm transition-shadow cursor-pointer"
+                >
                   {/* Фото ткани */}
                   <div className="w-full aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden relative mb-2 md:mb-4">
-                    <img src={product.image_url} alt={product.title} className="w-full h-full object-cover" />
+                    <img src={product.image_url} alt={product.title} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300" />
                     <button 
-                      onClick={() => handleToggleFavorite(product.id)}
+                      onClick={(e) => handleToggleFavorite(product.id, e)}
                       className="absolute top-2 right-2 bg-white/80 backdrop-blur-md p-1.5 rounded-full shadow-xs active:scale-95 transition-transform"
                     >
                       <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
@@ -136,7 +184,7 @@ export default function Home({ user }) {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-gray-50 mt-2 gap-2">
                       <span className="text-xs md:text-sm font-semibold text-gray-900 whitespace-nowrap">{product.price} сом <span className="text-[10px] text-gray-400 font-normal">/ м</span></span>
                       <button 
-                        onClick={() => handleAddToCart(product.id)}
+                        onClick={(e) => handleAddToCart(product.id, e)}
                         className="flex items-center justify-center gap-1 bg-gray-950 text-white text-[10px] md:text-xs py-2 px-2 md:px-3 rounded font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto"
                       >
                         <ShoppingBag className="w-3 h-3" />

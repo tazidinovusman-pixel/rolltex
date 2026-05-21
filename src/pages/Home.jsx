@@ -1,0 +1,156 @@
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../supabase/supabaseClient';
+import { ShoppingBag, Heart } from 'lucide-react';
+import bannerImage from '../assets/bannerImg.png';
+
+export default function Home({ user }) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [likedProducts, setLikedProducts] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('Все');
+
+  const categories = ['Все', 'Шелк', 'Хлопок', 'Лен', 'Шерсть', 'Бархат', 'Атлас', 'Трикотаж', 'Вискоза'];
+
+  useEffect(() => {
+    fetchProducts();
+    if (user) fetchUserFavorites();
+  }, [user]);
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data) setProducts(data);
+    setLoading(false);
+  };
+
+  const fetchUserFavorites = async () => {
+    const { data, error } = await supabase
+      .from('favorites')
+      .select('product_id')
+      .eq('user_id', user.id);
+    if (!error && data) setLikedProducts(data.map(f => f.product_id));
+  };
+
+  const handleToggleFavorite = async (productId) => {
+    if (!user) {
+      alert('Пожалуйста, войдите в аккаунт, чтобы добавлять ткани в избранное!');
+      return;
+    }
+    const isLiked = likedProducts.includes(productId);
+    if (isLiked) {
+      const { error } = await supabase.from('favorites').delete().eq('user_id', user.id).eq('product_id', productId);
+      if (!error) setLikedProducts(likedProducts.filter(id => id !== productId));
+    } else {
+      const { error } = await supabase.from('favorites').insert([{ user_id: user.id, product_id: productId }]);
+      if (!error) setLikedProducts([...likedProducts, productId]);
+    }
+  };
+
+  const handleAddToCart = async (productId) => {
+    if (!user) {
+      alert('Пожалуйста, войдите в аккаунт, чтобы совершать покупки!');
+      return;
+    }
+    const { data: item } = await supabase.from('cart').select('*').eq('user_id', user.id).eq('product_id', productId);
+    if (item && item.length > 0) {
+      await supabase.from('cart').update({ quantity: item[0].quantity + 1 }).eq('id', item[0].id);
+      alert('Количество товара в корзине увеличено!');
+    } else {
+      await supabase.from('cart').insert([{ user_id: user.id, product_id: productId, quantity: 1 }]);
+      alert('Ткань успешно добавлена в корзину!');
+    }
+  };
+
+  const finalProducts = selectedCategory === 'Все' 
+    ? products 
+    : products.filter(p => p.category === selectedCategory);
+
+  return (
+    <div className="bg-white min-h-screen">
+      {/* Баннер (адаптивный: на мобильных текст сверху, картинка снизу) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
+        <div className="bg-gray-50 rounded-2xl p-6 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="max-w-md space-y-3 text-center md:text-left">
+            <span className="text-[10px] md:text-xs font-semibold tracking-widest text-gray-400 uppercase">Новая коллекция</span>
+            <h1 className="text-2xl md:text-5xl font-light text-gray-900 leading-tight">Ваша зона комфорта, созданная с душой</h1>
+            <p className="text-xs md:text-sm text-gray-500 font-light">Натуральные премиальные ткани для одежды и интерьера.</p>
+          </div>
+          <div className="w-full md:w-1/2 max-w-xs md:max-w-sm aspect-square bg-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <img src={bannerImage} onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600'; }} alt="" className="w-full h-full object-cover mix-blend-multiply" />
+          </div>
+        </div>
+      </div>
+
+      {/* Горизонтальный скролл категорий */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-gray-100 sticky top-14 bg-white z-40 overflow-x-auto whitespace-nowrap scrollbar-none">
+        <div className="flex items-center space-x-2">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`text-[11px] md:text-xs uppercase tracking-wider font-medium px-3.5 py-2 rounded-full transition-all ${
+                selectedCategory === cat ? 'bg-gray-950 text-white shadow-sm' : 'bg-gray-50 text-gray-600'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* СЕТКА ТОВАРОВ: строго grid-cols-2 на телефонах и grid-cols-4 на компьютерах */}
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 md:py-12">
+        {loading ? (
+          <div className="text-center py-20 text-xs text-gray-400">Загрузка каталога...</div>
+        ) : finalProducts.length === 0 ? (
+          <div className="text-center py-20 text-xs text-gray-400">Нет доступных рулонов.</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 md:gap-x-6 gap-y-6 md:gap-y-10">
+            {finalProducts.map((product) => {
+              const isFavorite = likedProducts.includes(product.id);
+              return (
+                <div key={product.id} className="group relative flex flex-col bg-white border border-gray-100 rounded-xl p-1.5 md:p-2 hover:shadow-sm transition-shadow">
+                  
+                  {/* Фото ткани */}
+                  <div className="w-full aspect-[4/5] bg-gray-50 rounded-lg overflow-hidden relative mb-2 md:mb-4">
+                    <img src={product.image_url} alt={product.title} className="w-full h-full object-cover" />
+                    <button 
+                      onClick={() => handleToggleFavorite(product.id)}
+                      className="absolute top-2 right-2 bg-white/80 backdrop-blur-md p-1.5 rounded-full shadow-xs active:scale-95 transition-transform"
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+                    </button>
+                  </div>
+
+                  {/* Описание товара */}
+                  <div className="flex-1 flex flex-col justify-between px-1">
+                    <div>
+                      <span className="text-[9px] md:text-[11px] uppercase tracking-widest text-gray-400 font-medium">{product.category}</span>
+                      <h3 className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1 mt-0.5">{product.title}</h3>
+                    </div>
+                    
+                    {/* Цена и кнопка купить */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-gray-50 mt-2 gap-2">
+                      <span className="text-xs md:text-sm font-semibold text-gray-900 whitespace-nowrap">{product.price} сом <span className="text-[10px] text-gray-400 font-normal">/ м</span></span>
+                      <button 
+                        onClick={() => handleAddToCart(product.id)}
+                        className="flex items-center justify-center gap-1 bg-gray-950 text-white text-[10px] md:text-xs py-2 px-2 md:px-3 rounded font-medium hover:bg-gray-800 transition-colors w-full sm:w-auto"
+                      >
+                        <ShoppingBag className="w-3 h-3" />
+                        <span>В корзину</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

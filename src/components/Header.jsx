@@ -2,20 +2,27 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Search, User, ShoppingBag, Settings } from 'lucide-react';
 
-export default function Header({ user, role }) {
+// Добавили пропсы searchQuery и setSearchQuery для управления глобальным поиском
+export default function Header({ user, role, searchQuery, setSearchQuery }) {
   return (
     <header className="border-b border-gray-100 bg-white sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
-        {/* Логотип */}
-        <Link to="/" className="text-2xl font-bold tracking-wider text-gray-950">
+        {/* Логотип (При клике очищает поиск, чтобы показать все товары) */}
+        <Link 
+          to="/" 
+          onClick={() => setSearchQuery && setSearchQuery('')}
+          className="text-2xl font-bold tracking-wider text-gray-950"
+        >
           RollTex
         </Link>
 
-        {/* Поисковик */}
+        {/* Поисковик — Теперь полностью рабочий */}
         <div className="hidden sm:flex items-center flex-1 max-w-md mx-8 relative">
           <input
             type="text"
+            value={searchQuery || ''} // Привязали значение к стейту
+            onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)} // Обновляем стейт при вводе
             placeholder="Что вы ищете?..."
             className="w-full bg-gray-50 text-sm text-gray-800 placeholder-gray-400 pl-4 pr-10 py-2.5 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-300 transition-all"
           />

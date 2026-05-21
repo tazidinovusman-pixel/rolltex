@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase/supabaseClient';
 
@@ -10,10 +9,13 @@ export default function AdminPage() {
   // --- СОСТОЯНИЯ ДЛЯ ФОРМЫ ТОВАРА ---
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Хлопок');
-  const [subCategory, setSubCategory] = useState(''); // Новое состояние для подкатегории
+  const [subCategory, setSubCategory] = useState('');
   const [tag, setTag] = useState('');
   const [price, setPrice] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState(''); // Главное фото
+  const [extraUrl1, setExtraUrl1] = useState(''); // Доп фото 1
+  const [extraUrl2, setExtraUrl2] = useState(''); // Доп фото 2
+  const [extraUrl3, setExtraUrl3] = useState(''); // Доп фото 3
   const [description, setDescription] = useState('');
 
   // --- РЕАЛЬНЫЕ ДАННЫЕ ИЗ БАЗЫ ---
@@ -46,16 +48,20 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
 
+    // Собираем все заполненные дополнительные ссылки в один массив
+    const extraImages = [extraUrl1, extraUrl2, extraUrl3].filter(url => url.trim() !== '');
+
     const { error } = await supabase
       .from('products')
       .insert([
         { 
           title, 
           category, 
-          sub_category: subCategory, // Передаем подкатегорию в базу
+          sub_category: subCategory, 
           tag, 
           price: Number(price), 
-          image_url: imageUrl, 
+          image_url: imageUrl, // Главная картинка для сетки
+          images: extraImages, // Массив дополнительных картинок для внутренней страницы
           description 
         }
       ]);
@@ -65,8 +71,9 @@ export default function AdminPage() {
     if (error) {
       alert('Ошибка при сохранении: ' + error.message);
     } else {
-      alert('Товар успешно сохранен в Supabase!');
-      setTitle(''); setCategory('Хлопок'); setSubCategory(''); setTag(''); setPrice(''); setImageUrl(''); setDescription('');
+      alert('Товар с галереей успешно сохранен в Supabase!');
+      setTitle(''); setCategory('Хлопок'); setSubCategory(''); setTag(''); setPrice(''); setImageUrl('');
+      setExtraUrl1(''); setExtraUrl2(''); setExtraUrl3(''); setDescription('');
       fetchProducts();
     }
   };
@@ -129,7 +136,7 @@ export default function AdminPage() {
             </button>
           </nav>
         </div>
-        <div className="text-[10px] text-gray-400 border-t border-gray-100 pt-4">Система RollTex v1.6</div>
+        <div className="text-[10px] text-gray-400 border-t border-gray-100 pt-4">Система RollTex v1.7</div>
       </div>
 
       {/* ОСНОВНОЙ КОНТЕНТ */}
@@ -139,8 +146,8 @@ export default function AdminPage() {
         {activeTab === 'add-product' && (
           <div className="max-w-4xl mx-auto">
             <div className="mb-6">
-              <h1 className="text-xl md:text-2xl font-light text-gray-900">Новый товар</h1>
-              <p className="text-xs text-gray-400 mt-1">Отправка данных в Supabase</p>
+              <h1 className="text-xl md:text-2xl font-light text-gray-900">Новый товар с галереей вариантов</h1>
+              <p className="text-xs text-gray-400 mt-1">Отправка расширенных данных в Supabase</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
@@ -150,12 +157,11 @@ export default function AdminPage() {
                   <input type="text" placeholder="Шелк Армани Премиум" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none focus:border-black" required />
                 </div>
 
-                {/* Блок категорий теперь вмещает и подкатегорию */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 block mb-1">КАТЕГОРИЯ</label>
                     <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded bg-white outline-none">
-                      <option>Хлопок</option><option>Шелк</option><option>Лен</option><option>Трикотаж</option>
+                      <option>Хлопок</option><option>Шелк</option><option>Лен</option><option>Трикотаж</option><option>Шерсть</option><option>Бархат</option><option>Атлас</option><option>Вискоза</option>
                     </select>
                   </div>
                   <div>
@@ -173,9 +179,24 @@ export default function AdminPage() {
                   <input type="number" placeholder="1200" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none" required />
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-gray-400 block mb-1">ССЫЛКА НА ФОТО (URL)</label>
-                  <input type="url" placeholder="https://images.unsplash.com/...jpg" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none text-blue-600 font-mono text-xs" required />
+                {/* БЛОК ССЫЛОК НА ФОТО */}
+                <div className="space-y-2 border-t border-b border-gray-100 py-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-blue-600 block mb-1">ГЛАВНОЕ ФОТО (ВИДНО НА ГЛАВНОЙ)</label>
+                    <input type="url" placeholder="https://images.unsplash.com/main.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full border border-blue-200 px-4 py-2 text-sm rounded outline-none font-mono text-xs text-blue-600" required />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 block mb-1">ДОПОЛНИТЕЛЬНОЕ ФОТО 1 (ВАРИАНТ КРУПНО)</label>
+                    <input type="url" placeholder="https://images.unsplash.com/extra1.jpg" value={extraUrl1} onChange={(e) => setExtraUrl1(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none font-mono text-xs text-gray-600" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 block mb-1">ДОПОЛНИТЕЛЬНОЕ ФОТО 2 (ВАРИАНТ КРУПНО)</label>
+                    <input type="url" placeholder="https://images.unsplash.com/extra2.jpg" value={extraUrl2} onChange={(e) => setExtraUrl2(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none font-mono text-xs text-gray-600" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 block mb-1">ДОПОЛНИТЕЛЬНОЕ ФОТО 3 (ВАРИАНТ КРУПНО)</label>
+                    <input type="url" placeholder="https://images.unsplash.com/extra3.jpg" value={extraUrl3} onChange={(e) => setExtraUrl3(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none font-mono text-xs text-gray-600" />
+                  </div>
                 </div>
 
                 <div>
@@ -188,14 +209,27 @@ export default function AdminPage() {
                 </button>
               </form>
 
+              {/* ПРЕВЬЮ ВСЕХ КАРТИНОК */}
               <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-xs h-fit space-y-4">
-                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Превью фото</h3>
-                <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center border border-gray-100">
-                  {imageUrl ? (
-                    <img src={imageUrl} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.src='https://placehold.co/600x400?text=Ошибка+ссылки'; }} />
-                  ) : (
-                    <span className="text-xs text-gray-400 text-center p-4">Вставьте ссылку для превью</span>
-                  )}
+                <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Превью галереи</h3>
+                
+                <div className="space-y-2">
+                  <span className="text-[9px] font-bold text-gray-400 block">ГЛАВНОЕ:</span>
+                  <div className="w-full h-36 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 flex items-center justify-center">
+                    {imageUrl ? <img src={imageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-[10px] text-gray-300">Нет ссылки</span>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
+                  <div className="aspect-square bg-gray-50 rounded border flex items-center justify-center overflow-hidden">
+                    {extraUrl1 ? <img src={extraUrl1} alt="" className="w-full h-full object-cover" /> : <span className="text-[9px] text-gray-300">Доп 1</span>}
+                  </div>
+                  <div className="aspect-square bg-gray-50 rounded border flex items-center justify-center overflow-hidden">
+                    {extraUrl2 ? <img src={extraUrl2} alt="" className="w-full h-full object-cover" /> : <span className="text-[9px] text-gray-300">Доп 2</span>}
+                  </div>
+                  <div className="aspect-square bg-gray-50 rounded border flex items-center justify-center overflow-hidden">
+                    {extraUrl3 ? <img src={extraUrl3} alt="" className="w-full h-full object-cover" /> : <span className="text-[9px] text-gray-300">Доп 3</span>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -210,7 +244,6 @@ export default function AdminPage() {
               <p className="text-xs text-gray-400 mt-0.5">Товары на живом сайте</p>
             </div>
 
-            {/* Мобильный вид */}
             <div className="block md:hidden space-y-3">
               {products.length === 0 ? (
                 <div className="bg-white border border-gray-200 p-6 text-center text-gray-400 text-xs rounded-xl">Товаров нет.</div>
@@ -237,7 +270,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Десктопный вид */}
             <div className="hidden md:block bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -261,6 +293,7 @@ export default function AdminPage() {
                           <div className="flex gap-1 mt-0.5">
                             {product.sub_category && <span className="text-[9px] text-purple-600 font-bold bg-purple-50 px-1 rounded uppercase">{product.sub_category}</span>}
                             {product.tag && <span className="text-[9px] text-gray-600 font-bold bg-gray-100 px-1 rounded uppercase">{product.tag}</span>}
+                            {product.images && product.images.length > 0 && <span className="text-[9px] text-green-600 font-bold bg-green-50 px-1 rounded uppercase">Галерея: +{product.images.length}</span>}
                           </div>
                         </td>
                         <td className="p-4 text-gray-500">{product.category}</td>
@@ -277,7 +310,7 @@ export default function AdminPage() {
           </div>
         )}
 
-          {/* ВКЛАДКА 3: КЛИЕНТЫ */}
+        {/* ВКЛАДКА 3: КЛИЕНТЫ */}
         {activeTab === 'clients' && (
           <div className="max-w-4xl mx-auto">
             <div className="mb-4">

@@ -14,7 +14,8 @@ import Trikotaj from './Trikotaj';
 import Viskoza from './Viskoza';
 import CategoryPage from '../pages/CategoryPage'; 
 
-export default function Home({ user }) {
+// 1. ДОБАВИЛИ searchQuery В ПРОПСЫ КОМПОНЕНТА
+export default function Home({ user, searchQuery = '' }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [likedProducts, setLikedProducts] = useState([]);
@@ -30,6 +31,17 @@ export default function Home({ user }) {
     fetchProducts();
     if (user) fetchUserFavorites();
   }, [user]);
+
+  // 2. АВТО-СБРОС КАТЕГОРИИ ПРИ ВВОДЕ В ПОИСКОВИК
+  // Если пользователь начинает писать в поиске, сбрасываем экраны подкатегорий на "Все",
+  // чтобы мгновенно отобразить результаты глобального поиска.
+  useEffect(() => {
+    if (searchQuery.trim() !== '') {
+      setCurrentScreen('MAIN');
+      setSelectedCategory('Все');
+      setSelectedProduct(null); // Закрываем детальный просмотр при поиске
+    }
+  }, [searchQuery]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -90,20 +102,29 @@ export default function Home({ user }) {
     }
   };
 
+  // 3. ФИЛЬТРАЦИЯ ДАННЫХ ПО НАЗВАНИЮ И КАТЕГОРИИ
+  const filteredProducts = products.filter((product) => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true; // Если пустой поиск — показываем всё
+    
+    return (
+      product.title?.toLowerCase().includes(query) || 
+      product.category?.toLowerCase().includes(query)
+    );
+  });
+
   // --- ЛОГИКА ПЕРЕКЛЮЧЕНИЯ МЕЖДУ СТРАНИЦАМИ ---
-  // Если выбран просмотр одной конкретной карточки из режима "Все"
   if (selectedProduct) {
     return (
       <CategoryPage 
         categoryName={selectedProduct.category} 
         onBack={() => setSelectedProduct(null)} 
-        singleProduct={selectedProduct} // Передаем ткань для мгновенного большого показа
+        singleProduct={selectedProduct} 
         user={user}
       />
     );
   }
 
-  // Переключение на списки категорий
   if (currentScreen === 'ШЕЛК') return <Shelk user={user} onBack={() => setCurrentScreen('MAIN')} />;
   if (currentScreen === 'ХЛОПОК') return <Hlopok user={user} onBack={() => setCurrentScreen('MAIN')} />;
   if (currentScreen === 'ЛЕН') return <Len user={user} onBack={() => setCurrentScreen('MAIN')} />;
@@ -146,20 +167,20 @@ export default function Home({ user }) {
         </div>
       </div>
 
-      {/* СЕТКА ТОВАРОВ "ВСЕ" */}
+      {/* СЕТКА ТОВАРОВ "ВСЕ" С УЧЕТОМ ПОИСКА */}
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-6 md:py-12">
         {loading ? (
-          <div className="text-center py-20 text-xs text-gray-400">Загрузка каталога...</div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-20 text-xs text-gray-400">Нет доступных рулонов.</div>
+          <div className="text-center py-20 text-xs text-gray-400">Загрузка каталог...</div>
+        ) : filteredProducts.length === 0 ? ( // 4. ЗАМЕНИЛИ products.length НА filteredProducts.length
+          <div className="text-center py-20 text-xs text-gray-400">Ткани с такими параметрами не найдены.</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-2 md:gap-x-6 gap-y-6 md:gap-y-10">
-            {products.map((product) => {
+            {filteredProducts.map((product) => { // 5. ИТЕРИРУЕМ filteredProducts Вместо Обычного МАССИВА
               const isFavorite = likedProducts.includes(product.id);
               return (
                 <div 
                   key={product.id} 
-                  onClick={() => setSelectedProduct(product)} // Клик открывает большую страницу!
+                  onClick={() => setSelectedProduct(product)} 
                   className="group relative flex flex-col bg-white border border-gray-100 rounded-xl p-1.5 md:p-2 hover:shadow-sm transition-shadow cursor-pointer"
                 >
                   {/* Фото ткани */}

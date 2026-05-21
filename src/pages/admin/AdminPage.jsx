@@ -1,16 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabase/supabaseClient'; // Проверь правильность пути к твоему supabaseClient!
+import { supabase } from '../../supabase/supabaseClient';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('add-product');
   const [loading, setLoading] = useState(false);
-  
-  // Состояние для открытия/закрытия бургер-меню на мобилке
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // --- СОСТОЯНИЯ ДЛЯ ФОРМЫ ТОВАРА ---
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('Хлопок');
+  const [subCategory, setSubCategory] = useState(''); // Новое состояние для подкатегории
   const [tag, setTag] = useState('');
   const [price, setPrice] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -41,13 +41,24 @@ export default function AdminPage() {
     if (!error && data) setClients(data);
   };
 
+  // ДОБАВЛЕНИЕ ТОВАРА В SUPABASE
   const handleAddProduct = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     const { error } = await supabase
       .from('products')
-      .insert([{ title, category, tag, price: Number(price), image_url: imageUrl, description }]);
+      .insert([
+        { 
+          title, 
+          category, 
+          sub_category: subCategory, // Передаем подкатегорию в базу
+          tag, 
+          price: Number(price), 
+          image_url: imageUrl, 
+          description 
+        }
+      ]);
 
     setLoading(false);
 
@@ -55,7 +66,7 @@ export default function AdminPage() {
       alert('Ошибка при сохранении: ' + error.message);
     } else {
       alert('Товар успешно сохранен в Supabase!');
-      setTitle(''); setPrice(''); setTag(''); setImageUrl(''); setDescription('');
+      setTitle(''); setCategory('Хлопок'); setSubCategory(''); setTag(''); setPrice(''); setImageUrl(''); setDescription('');
       fetchProducts();
     }
   };
@@ -74,90 +85,54 @@ export default function AdminPage() {
     }
   };
 
-  // Функция для удобного переключения вкладок на мобилке (меняет вкладку и закрывает бургер)
   const handleTabChange = (tabName) => {
     setActiveTab(tabName);
-    setIsMenuOpen(false); // Закрываем шторку меню
+    setIsMenuOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans text-gray-900 relative">
       
-      {/* ШАПКА ДЛЯ МОБИЛЬНЫХ ТЕЛЕФОНОВ (Появляется только на экранах меньше md) */}
+      {/* ШАПКА ДЛЯ МОБИЛЬНЫХ ТЕЛЕФОНОВ */}
       <div className="md:hidden w-full bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          {/* КНОПКА БУРГЕР (ТРИ ПОЛОСКИ) */}
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)} 
-            className="text-2xl p-1 text-gray-800 focus:outline-none active:scale-90 transition-transform"
-          >
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-2xl p-1 text-gray-800 focus:outline-none">
             {isMenuOpen ? '✕' : '☰'}
           </button>
           <span className="font-bold tracking-tight text-sm">RollTex Admin</span>
         </div>
-        <span className="text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-500 font-mono">
-          Tabs: {products.length + clients.length > 0 ? 'Connected' : 'Loading'}
-        </span>
       </div>
 
-      {/* ЗАДНИЙ ТЕМНЫЙ ФОН (Оверлей) — закрывает меню при клике на пустоту на мобилке */}
-      {isMenuOpen && (
-        <div 
-          onClick={() => setIsMenuOpen(false)} 
-          className="fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity"
-        />
-      )}
+      {/* ОВЕРЛЕЙ */}
+      {isMenuOpen && <div onClick={() => setIsMenuOpen(false)} className="fixed inset-0 bg-black/40 z-40 md:hidden" />}
 
-      {/* БОКОВАЯ ПАНЕЛЬ / ВЫЕЗЖАЮЩАЯ ШТОРКА МЕНЮ */}
-      <div className={`
-        fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 p-6 flex flex-col justify-between shrink-0 z-50
-        transition-transform duration-300 ease-in-out
-        md:relative md:transform-none
-        ${isMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}
-      `}>
+      {/* БОКОВАЯ ПАНЕЛЬ */}
+      <div className={`fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 p-6 flex flex-col justify-between shrink-0 z-50 transition-transform duration-300 ease-in-out md:relative md:transform-none ${isMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}`}>
         <div>
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold tracking-tight text-gray-900">RollTex Admin</h2>
               <p className="text-xs text-gray-400">Настоящая база данных</p>
             </div>
-            {/* Кнопка закрыть внутри меню (только на мобилках) */}
-            <button onClick={() => setIsMenuOpen(false)} className="md:hidden text-gray-400 text-lg p-1 hover:text-black">✕</button>
+            <button onClick={() => setIsMenuOpen(false)} className="md:hidden text-gray-400 text-lg p-1">✕</button>
           </div>
 
           <nav className="space-y-1">
-            <button 
-              onClick={() => handleTabChange('add-product')} 
-              className={`w-full text-left flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors ${
-                activeTab === 'add-product' ? 'bg-gray-950 text-white' : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
+            <button onClick={() => handleTabChange('add-product')} className={`w-full text-left flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors ${activeTab === 'add-product' ? 'bg-gray-950 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
               Добавить товары
             </button>
-
-            <button 
-              onClick={() => handleTabChange('manage-products')} 
-              className={`w-full text-left flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors ${
-                activeTab === 'manage-products' ? 'bg-gray-950 text-white' : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
+            <button onClick={() => handleTabChange('manage-products')} className={`w-full text-left flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors ${activeTab === 'manage-products' ? 'bg-gray-950 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
               Управление товарами ({products.length})
             </button>
-
-            <button 
-              onClick={() => handleTabChange('clients')} 
-              className={`w-full text-left flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors ${
-                activeTab === 'clients' ? 'bg-gray-950 text-white' : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
+            <button onClick={() => handleTabChange('clients')} className={`w-full text-left flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-wider font-semibold rounded-lg transition-colors ${activeTab === 'clients' ? 'bg-gray-950 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
               Клиенты ({clients.length})
             </button>
           </nav>
         </div>
-        <div className="text-[10px] text-gray-400 border-t border-gray-100 pt-4">Система RollTex v1.5</div>
+        <div className="text-[10px] text-gray-400 border-t border-gray-100 pt-4">Система RollTex v1.6</div>
       </div>
 
-      {/* ОСНОВНОЙ КОНТЕНТ (ПРАВАЯ ЧАСТЬ) */}
+      {/* ОСНОВНОЙ КОНТЕНТ */}
       <div className="flex-1 p-4 md:p-10 overflow-y-auto">
         
         {/* ВКЛАДКА 1: ДОБАВЛЕНИЕ */}
@@ -175,12 +150,17 @@ export default function AdminPage() {
                   <input type="text" placeholder="Шелк Армани Премиум" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none focus:border-black" required />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Блок категорий теперь вмещает и подкатегорию */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 block mb-1">КАТЕГОРИЯ</label>
                     <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded bg-white outline-none">
                       <option>Хлопок</option><option>Шелк</option><option>Лен</option><option>Трикотаж</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 block mb-1">ПОДКАТЕГОРИЯ</label>
+                    <input type="text" placeholder="Однотонные" value={subCategory} onChange={(e) => setSubCategory(e.target.value)} className="w-full border border-gray-200 px-4 py-2 text-sm rounded outline-none" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 block mb-1">СПЕЦИФИКА / ТЕГ</label>
@@ -230,8 +210,36 @@ export default function AdminPage() {
               <p className="text-xs text-gray-400 mt-0.5">Товары на живом сайте</p>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[550px]">
+            {/* Мобильный вид */}
+            <div className="block md:hidden space-y-3">
+              {products.length === 0 ? (
+                <div className="bg-white border border-gray-200 p-6 text-center text-gray-400 text-xs rounded-xl">Товаров нет.</div>
+              ) : (
+                products.map((product) => (
+                  <div key={product.id} className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 shadow-xs">
+                    <div className="flex gap-3 items-center">
+                      <img src={product.image_url} alt="" className="w-14 h-14 rounded-lg object-cover border shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm text-gray-900 break-words">{product.title}</h3>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">{product.category}</span>
+                          {product.sub_category && <span className="bg-purple-50 text-purple-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">{product.sub_category}</span>}
+                          {product.tag && <span className="bg-blue-50 text-blue-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">{product.tag}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-gray-50 pt-2.5 mt-1">
+                      <span className="font-mono font-bold text-sm text-gray-900">{product.price} сом</span>
+                      <button onClick={() => handleDeleteProduct(product.id)} className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-4 py-2 rounded-lg">Удалить товар</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Десктопный вид */}
+            <div className="hidden md:block bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
+              <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                     <th className="p-4 w-20">Фото</th>
@@ -241,7 +249,7 @@ export default function AdminPage() {
                     <th className="p-4 text-right">Действия</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 text-xs md:text-sm">
+                <tbody className="divide-y divide-gray-100 text-sm">
                   {products.length === 0 ? (
                     <tr><td colSpan="5" className="p-8 text-center text-gray-400 text-xs">Товаров нет.</td></tr>
                   ) : (
@@ -250,7 +258,10 @@ export default function AdminPage() {
                         <td className="p-4"><img src={product.image_url} alt="" className="w-10 h-10 rounded object-cover border" /></td>
                         <td className="p-4 font-medium">
                           <div className="line-clamp-1">{product.title}</div>
-                          {product.tag && <span className="inline-block mt-0.5 bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">{product.tag}</span>}
+                          <div className="flex gap-1 mt-0.5">
+                            {product.sub_category && <span className="text-[9px] text-purple-600 font-bold bg-purple-50 px-1 rounded uppercase">{product.sub_category}</span>}
+                            {product.tag && <span className="text-[9px] text-gray-600 font-bold bg-gray-100 px-1 rounded uppercase">{product.tag}</span>}
+                          </div>
                         </td>
                         <td className="p-4 text-gray-500">{product.category}</td>
                         <td className="p-4 font-mono font-medium text-gray-900">{product.price} сом</td>
@@ -266,7 +277,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ВКЛАДКА 3: КЛИЕНТЫ */}
+          {/* ВКЛАДКА 3: КЛИЕНТЫ */}
         {activeTab === 'clients' && (
           <div className="max-w-4xl mx-auto">
             <div className="mb-4">

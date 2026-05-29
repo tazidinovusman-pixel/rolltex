@@ -13,6 +13,22 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(''); // Состояние для глобального поиска
 
+  // --- ДОБАВИЛИ: Состояние темной темы для всего сайта ---
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  // --- ДОБАВИЛИ: Эффект для автоматического добавления класса 'dark' на уровень HTML ---
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
   // Функция получения роли пользователя из таблицы profiles
   const fetchUserRole = async (userId) => {
     try {
@@ -51,7 +67,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      
+
       if (currentUser) {
         fetchUserRole(currentUser.id);
       } else {
@@ -71,8 +87,9 @@ export default function App() {
   };
 
   if (loading) {
+    // Чтобы экран загрузки тоже соответствовал теме:
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-sm text-gray-400">
+      <div className={`min-h-screen flex items-center justify-center text-sm transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-50' : 'bg-white text-gray-400'}`}>
         Загрузка RollTex...
       </div>
     );
@@ -80,30 +97,46 @@ export default function App() {
 
   return (
     <Router>
-      <div className="bg-white text-gray-900 min-h-screen antialiased">
-        {/* Передаем стейты поиска в Хедер */}
-        <Header 
-          user={user} 
-          role={role} 
-          searchQuery={searchQuery} 
-          setSearchQuery={setSearchQuery} 
-        />
+      {/* ИСПРАВИЛИ ТЕГ DIV: Теперь он динамически меняет фон для всего проекта */}
+      <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-zinc-950 text-zinc-50' : 'bg-white text-gray-900'}`}>
         
+        {/* Передаем стейты поиска в Хедер */}
+        <Header
+          user={user}
+          role={role}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+        />
+
         <Routes>
           {/* СВЯЗАЛИ ПОИСК: Передали строку поиска в компонент Home */}
           <Route path="/" element={<Home user={user} searchQuery={searchQuery} />} />
-          
-          <Route 
-            path="/profile" 
-            element={user ? <Profile user={user} onLogout={() => { setUser(null); setRole('user'); }} /> : <Navigate to="/auth" />} 
-          />
-          
-          <Route 
-            path="/auth" 
-            element={!user ? <AuthPage onAuthSuccess={handleAuthSuccess} /> : <Navigate to="/profile" />} 
+
+          {/* ИСПРАВИЛИ PROFILE: Передали пропсы darkMode и setDarkMode */}
+          <Route
+            path="/profile"
+            element={
+              user ? (
+                <Profile 
+                  user={user} 
+                  onLogout={() => { setUser(null); setRole('user'); }} 
+                  darkMode={darkMode}
+                  setDarkMode={setDarkMode}
+                />
+              ) : (
+                <Navigate to="/auth" />
+              )
+            }
           />
 
-          <Route path="/admin" element={user && role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />  
+          <Route
+            path="/auth"
+            element={!user ? <AuthPage onAuthSuccess={handleAuthSuccess} /> : <Navigate to="/profile" />}
+          />
+
+          <Route path="/admin" element={user && role === 'admin' ? <AdminPage /> : <Navigate to="/" />} />
         </Routes>
       </div>
     </Router>
